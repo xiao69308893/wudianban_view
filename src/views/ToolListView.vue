@@ -1,833 +1,598 @@
 <template>
   <div class="tool-list-view">
-    <!-- 面包屑导航 -->
-    <section class="breadcrumb-section">
-      <div class="container">
-        <nav class="breadcrumb">
-          <RouterLink to="/categories" class="breadcrumb-item">首页</RouterLink>
-          <span class="breadcrumb-separator">></span>
-          <span class="breadcrumb-current">{{ categoryInfo.name }}</span>
-        </nav>
-      </div>
-    </section>
-
-    <!-- 分类头部 -->
-    <section class="category-header">
-      <div class="container">
+    <!-- 页面头部 -->
+    <el-page-header @back="goBack" class="page-header">
+      <template #content>
         <div class="header-content">
-          <div class="category-info">
-            <span class="category-icon">{{ categoryInfo.icon }}</span>
-            <div class="category-details">
-              <h1 class="category-title">{{ categoryInfo.name }}</h1>
-              <p class="category-description">{{ categoryInfo.description }}</p>
-              <div class="category-stats">
-                <span class="tool-count">{{ tools.length }} 个工具</span>
-                <span class="usage-count">累计使用 {{ categoryInfo.usageCount }} 次</span>
-              </div>
-            </div>
+          <el-icon size="24" :color="categoryInfo.color">
+            <component :is="categoryInfo.iconComponent" />
+          </el-icon>
+          <div class="header-text">
+            <h1>{{ categoryInfo.name }}</h1>
+            <p>{{ categoryInfo.description }}</p>
           </div>
         </div>
-      </div>
-    </section>
+      </template>
+      <template #extra>
+        <el-tag type="info" size="large">
+          {{ tools.length }} 个工具
+        </el-tag>
+      </template>
+    </el-page-header>
 
-    <!-- 工具筛选和搜索 -->
-    <section class="filters-section">
-      <div class="container">
-        <div class="filters-bar">
-          <div class="search-box">
-            <input
-              v-model="searchQuery"
-              type="text"
-              placeholder="搜索工具..."
-              class="search-input"
-            >
-            <span class="search-icon">🔍</span>
-          </div>
+    <!-- 工具搜索和过滤 -->
+    <div class="filter-section">
+      <el-row :gutter="16" justify="space-between" align="middle">
+        <el-col :xs="24" :sm="16">
+          <el-input
+            v-model="searchKeyword"
+            placeholder="搜索工具..."
+            clearable
+            size="large"
+          >
+            <template #prefix>
+              <el-icon><Search /></el-icon>
+            </template>
+          </el-input>
+        </el-col>
 
-          <div class="filter-options">
-            <select v-model="sortOption" class="sort-select">
-              <option value="name">按名称排序</option>
-              <option value="usage">按使用频率</option>
-              <option value="recent">最近添加</option>
-            </select>
+        <el-col :xs="24" :sm="8">
+          <el-select
+            v-model="sortBy"
+            placeholder="排序方式"
+            size="large"
+            style="width: 100%"
+          >
+            <el-option label="默认排序" value="default" />
+            <el-option label="按名称" value="name" />
+            <el-option label="最常用" value="popular" />
+            <el-option label="最新" value="newest" />
+          </el-select>
+        </el-col>
+      </el-row>
+    </div>
 
-            <div class="view-toggle">
-              <button
-                @click="viewMode = 'grid'"
-                :class="{ active: viewMode === 'grid' }"
-                class="view-btn"
-              >
-                ⊞
-              </button>
-              <button
-                @click="viewMode = 'list'"
-                :class="{ active: viewMode === 'list' }"
-                class="view-btn"
-              >
-                ☰
-              </button>
-            </div>
-          </div>
-        </div>
-      </div>
-    </section>
-
-    <!-- 工具列表 -->
-    <section class="tools-section">
-      <div class="container">
-        <div :class="['tools-container', `view-${viewMode}`]">
-          <div
-            v-for="tool in filteredTools"
-            :key="tool.id"
-            class="tool-item"
+    <!-- 工具网格 -->
+    <div class="tools-grid">
+      <el-row :gutter="16">
+        <el-col
+          v-for="tool in filteredTools"
+          :key="tool.id"
+          :xs="24"
+          :sm="12"
+          :md="8"
+          :lg="6"
+          class="tool-col"
+        >
+          <el-card
+            class="tool-card"
+            shadow="hover"
             @click="goToTool(tool.id)"
+            :body-style="{ padding: '20px' }"
           >
-            <div class="tool-card">
-              <div class="tool-header">
-                <span class="tool-icon">{{ tool.icon }}</span>
-                <div class="tool-meta">
-                  <span v-if="tool.isNew" class="new-badge">新</span>
-                  <span v-if="tool.isPopular" class="popular-badge">热门</span>
-                </div>
-              </div>
-
-              <div class="tool-content">
-                <h3 class="tool-name">{{ tool.name }}</h3>
-                <p class="tool-description">{{ tool.description }}</p>
-
-                <div class="tool-features">
-                  <span
-                    v-for="feature in tool.features"
-                    :key="feature"
-                    class="feature-tag"
-                  >
-                    {{ feature }}
-                  </span>
-                </div>
-              </div>
-
-              <div class="tool-footer">
-                <div class="tool-stats">
-                  <span class="usage-stat">
-                    <span class="stat-icon">👥</span>
-                    {{ tool.usageCount }}
-                  </span>
-                  <span class="rating-stat">
-                    <span class="stat-icon">⭐</span>
-                    {{ tool.rating }}
-                  </span>
-                </div>
-
-                <button class="use-tool-btn">
-                  使用工具 →
-                </button>
-              </div>
+            <!-- 工具图标和状态 -->
+            <div class="tool-header">
+              <div class="tool-icon">{{ tool.icon }}</div>
+              <el-tag
+                v-if="tool.isNew"
+                type="success"
+                size="small"
+                class="new-tag"
+              >
+                NEW
+              </el-tag>
+              <el-tag
+                v-if="tool.isPopular"
+                type="warning"
+                size="small"
+                class="popular-tag"
+              >
+                热门
+              </el-tag>
             </div>
-          </div>
-        </div>
 
-        <!-- 空状态 -->
-        <div v-if="filteredTools.length === 0" class="empty-state">
-          <div class="empty-icon">🔍</div>
-          <h3>未找到相关工具</h3>
-          <p>尝试调整搜索条件或浏览其他分类</p>
-          <RouterLink to="/categories" class="back-btn">返回首页</RouterLink>
-        </div>
-      </div>
-    </section>
-
-    <!-- 推荐工具 -->
-    <section class="recommended-section" v-if="recommendedTools.length > 0">
-      <div class="container">
-        <h2 class="section-title">推荐工具</h2>
-        <div class="recommended-grid">
-          <RouterLink
-            v-for="tool in recommendedTools"
-            :key="tool.id"
-            :to="`/category/${tool.categoryId}/tool/${tool.id}`"
-            class="recommended-card"
-          >
-            <span class="tool-icon">{{ tool.icon }}</span>
+            <!-- 工具信息 -->
             <div class="tool-info">
-              <h4>{{ tool.name }}</h4>
-              <p>{{ tool.description }}</p>
+              <h3 class="tool-name">{{ tool.name }}</h3>
+              <p class="tool-description">{{ tool.description }}</p>
+
+              <!-- 工具特性标签 -->
+              <div class="tool-features">
+                <el-tag
+                  v-for="feature in tool.features"
+                  :key="feature"
+                  size="small"
+                  type="info"
+                  effect="plain"
+                >
+                  {{ feature }}
+                </el-tag>
+              </div>
             </div>
-          </RouterLink>
-        </div>
+
+            <!-- 工具统计 -->
+            <div class="tool-stats">
+              <div class="stat-item">
+                <el-icon><View /></el-icon>
+                <span>{{ tool.viewCount }}</span>
+              </div>
+              <div class="stat-item">
+                <el-icon><Star /></el-icon>
+                <span>{{ tool.rating }}</span>
+              </div>
+            </div>
+
+            <!-- 操作按钮 -->
+            <div class="tool-actions">
+              <el-button
+                type="primary"
+                size="small"
+                :icon="Right"
+                @click.stop="goToTool(tool.id)"
+              >
+                使用工具
+              </el-button>
+              <el-button
+                size="small"
+                :icon="Star"
+                @click.stop="toggleFavorite(tool)"
+                :type="tool.isFavorite ? 'warning' : 'default'"
+              >
+                {{ tool.isFavorite ? '已收藏' : '收藏' }}
+              </el-button>
+            </div>
+          </el-card>
+        </el-col>
+      </el-row>
+    </div>
+
+    <!-- 空状态 -->
+    <el-empty
+      v-if="filteredTools.length === 0"
+      description="没有找到相关工具"
+      :image-size="120"
+    >
+      <el-button type="primary" @click="clearSearch">
+        清除搜索条件
+      </el-button>
+    </el-empty>
+
+    <!-- 分页器 -->
+    <div class="pagination-container" v-if="totalTools > pageSize">
+      <el-pagination
+        v-model:current-page="currentPage"
+        v-model:page-size="pageSize"
+        :page-sizes="[12, 24, 48]"
+        :total="totalTools"
+        layout="total, sizes, prev, pager, next, jumper"
+        @size-change="handleSizeChange"
+        @current-change="handleCurrentChange"
+      />
+    </div>
+
+    <!-- 快速操作悬浮按钮 -->
+    <el-backtop :right="30" :bottom="30">
+      <div class="backtop-content">
+        <el-icon><CaretTop /></el-icon>
       </div>
-    </section>
+    </el-backtop>
   </div>
 </template>
 
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
+import { ElMessage } from 'element-plus'
+import {
+  Search,
+  Right,
+  Star,
+  View,
+  CaretTop,
+  Lightning,
+  Monitor,
+  Setting,
+  Tools
+} from '@element-plus/icons-vue'
 
 const route = useRoute()
 const router = useRouter()
 
-// 获取分类ID
+// 路由参数
 const categoryId = computed(() => parseInt(route.params.categoryId as string))
 
-// 搜索和筛选
-const searchQuery = ref('')
-const sortOption = ref('name')
-const viewMode = ref<'grid' | 'list'>('grid')
+// 搜索和排序状态
+const searchKeyword = ref('')
+const sortBy = ref('default')
+const currentPage = ref(1)
+const pageSize = ref(12)
 
-// 分类信息
-const categoryInfo = ref({
-  id: 1,
-  name: '常用计算',
-  icon: '⚡',
-  description: '电压、电流、功率等基础电气参数计算工具',
-  usageCount: 12547
-})
+// 分类信息映射
+const categoryInfoMap = {
+  1: {
+    name: '常用计算',
+    description: '基础电气参数计算工具',
+    color: '#409EFF',
+    iconComponent: Lightning
+  },
+  2: {
+    name: '负荷计算',
+    description: '电气负荷需求系数计算',
+    color: '#67C23A',
+    iconComponent: Monitor
+  },
+  3: {
+    name: '短路计算',
+    description: '短路电流及保护配置',
+    color: '#E6A23C',
+    iconComponent: Setting
+  },
+  4: {
+    name: '电压降计算',
+    description: '线路电压降损失计算',
+    color: '#F56C6C',
+    iconComponent: Tools
+  },
+  5: {
+    name: '电缆选择',
+    description: '电缆截面及型号选择',
+    color: '#909399',
+    iconComponent: Setting
+  },
+  6: {
+    name: '照明计算',
+    description: '照明设计计算工具',
+    color: '#f39c12',
+    iconComponent: Setting
+  }
+}
 
-// 工具数据
-const tools = ref([
+// 当前分类信息
+const categoryInfo = computed(() =>
+    categoryInfoMap[categoryId.value] || {
+      name: '未知分类',
+      description: '',
+      color: '#909399',
+      iconComponent: Tools
+    }
+)
+
+// 模拟工具数据
+const allTools = ref([
   {
     id: 1,
-    name: '三相功率计算器',
+    name: '三相交流功率计算',
     description: '计算三相交流电路的有功功率、无功功率和视在功率',
     icon: '⚡',
-    features: ['三相电路', '功率计算', '实时结果'],
-    usageCount: 1523,
+    categoryId: 1,
+    features: ['实时计算', '详细过程', '结果导出'],
+    viewCount: 1520,
     rating: 4.8,
     isNew: false,
     isPopular: true,
-    categoryId: 1
+    isFavorite: false
   },
   {
     id: 2,
-    name: '单相功率计算器',
-    description: '计算单相交流电路的功率参数和电气量',
+    name: '单相交流功率计算',
+    description: '单相交流电路参数计算工具',
     icon: '🔌',
-    features: ['单相电路', '基础计算', '快速便捷'],
-    usageCount: 956,
+    categoryId: 1,
+    features: ['简单易用', '公式显示'],
+    viewCount: 980,
     rating: 4.6,
-    isNew: false,
+    isNew: true,
     isPopular: false,
-    categoryId: 1
+    isFavorite: true
   },
   {
     id: 3,
-    name: '欧姆定律计算器',
-    description: '根据欧姆定律计算电压、电流、电阻之间的关系',
-    icon: 'Ω',
-    features: ['欧姆定律', '基础公式', '教学工具'],
-    usageCount: 2134,
-    rating: 4.9,
+    name: '电阻计算器',
+    description: '根据电阻值计算电压、电流关系',
+    icon: '🔧',
+    categoryId: 1,
+    features: ['欧姆定律', '功率计算'],
+    viewCount: 756,
+    rating: 4.5,
     isNew: false,
-    isPopular: true,
-    categoryId: 1
+    isPopular: false,
+    isFavorite: false
   },
   {
     id: 4,
-    name: 'RLC电路计算器',
-    description: '计算RLC串联和并联电路的阻抗、相位等参数',
-    icon: '🔄',
-    features: ['RLC电路', '阻抗计算', '相位分析'],
-    usageCount: 687,
-    rating: 4.7,
-    isNew: true,
-    isPopular: false,
-    categoryId: 1
-  },
-  {
-    id: 5,
-    name: '变压器计算器',
-    description: '计算变压器的变比、功率损耗和效率等参数',
-    icon: '🔀',
-    features: ['变压器', '变比计算', '效率分析'],
-    usageCount: 423,
-    rating: 4.5,
-    isNew: true,
-    isPopular: false,
-    categoryId: 1
-  },
-  {
-    id: 6,
-    name: '电容器计算器',
-    description: '计算电容器的容抗、储能和充放电参数',
+    name: '电容计算器',
+    description: '电容器容量和无功功率补偿计算',
     icon: '🔋',
-    features: ['电容计算', '储能分析', '时间常数'],
-    usageCount: 334,
+    categoryId: 1,
+    features: ['容量计算', '补偿分析'],
+    viewCount: 643,
     rating: 4.4,
     isNew: false,
     isPopular: false,
-    categoryId: 1
+    isFavorite: false
   }
+  // 可以添加更多工具数据
 ])
 
-// 推荐工具
-const recommendedTools = ref([
-  {
-    id: 7,
-    name: '电缆载流量计算',
-    description: '计算不同截面电缆的载流量',
-    icon: '🔌',
-    categoryId: 5
-  },
-  {
-    id: 8,
-    name: '照度计算器',
-    description: '计算室内外照明照度值',
-    icon: '💡',
-    categoryId: 6
-  }
-])
+// 当前分类的工具
+const categoryTools = computed(() =>
+  allTools.value.filter(tool => tool.categoryId === categoryId.value)
+)
 
-// 计算过滤后的工具
+// 过滤和排序后的工具
 const filteredTools = computed(() => {
-  let filtered = tools.value
+  let filtered = categoryTools.value
 
   // 搜索过滤
-  if (searchQuery.value) {
+  if (searchKeyword.value) {
+    const keyword = searchKeyword.value.toLowerCase()
     filtered = filtered.filter(tool =>
-      tool.name.includes(searchQuery.value) ||
-      tool.description.includes(searchQuery.value) ||
-      tool.features.some(feature => feature.includes(searchQuery.value))
+      tool.name.toLowerCase().includes(keyword) ||
+      tool.description.toLowerCase().includes(keyword)
     )
   }
 
   // 排序
-  switch (sortOption.value) {
-    case 'usage':
-      filtered.sort((a, b) => b.usageCount - a.usageCount)
+  switch (sortBy.value) {
+    case 'name':
+      filtered = [...filtered].sort((a, b) => a.name.localeCompare(b.name))
       break
-    case 'recent':
-      filtered.sort((a, b) => (b.isNew ? 1 : 0) - (a.isNew ? 1 : 0))
+    case 'popular':
+      filtered = [...filtered].sort((a, b) => b.viewCount - a.viewCount)
       break
-    default: // name
-      filtered.sort((a, b) => a.name.localeCompare(b.name))
+    case 'newest':
+      filtered = [...filtered].sort((a, b) => Number(b.isNew) - Number(a.isNew))
+      break
+    default:
+      // 默认排序：热门 > 新工具 > 浏览量
+      filtered = [...filtered].sort((a, b) => {
+        if (a.isPopular !== b.isPopular) return Number(b.isPopular) - Number(a.isPopular)
+        if (a.isNew !== b.isNew) return Number(b.isNew) - Number(a.isNew)
+        return b.viewCount - a.viewCount
+      })
   }
 
   return filtered
 })
 
-// 跳转到工具详情
+// 分页相关
+const totalTools = computed(() => filteredTools.value.length)
+const tools = computed(() => {
+  const start = (currentPage.value - 1) * pageSize.value
+  const end = start + pageSize.value
+  return filteredTools.value.slice(start, end)
+})
+
+// 页面方法
+const goBack = () => {
+  router.go(-1)
+}
+
 const goToTool = (toolId: number) => {
   router.push({
     name: 'tool',
-    params: {
-      categoryId: categoryId.value,
-      toolId
-    }
+    params: { categoryId: categoryId.value, toolId }
   })
 }
 
-// 根据分类ID更新分类信息
-const updateCategoryInfo = () => {
-  const categories = {
-    1: { name: '常用计算', icon: '⚡', description: '电压、电流、功率等基础电气参数计算工具', usageCount: 12547 },
-    2: { name: '负荷计算', icon: '📊', description: '设备负荷、用电量、需用系数等计算工具', usageCount: 8934 },
-    3: { name: '短路计算', icon: '⚠️', description: '短路电流、保护设备选择等安全计算工具', usageCount: 6721 },
-    4: { name: '电压降计算', icon: '📉', description: '线路电压降、补偿计算等配电计算工具', usageCount: 5432 },
-    5: { name: '电缆选择', icon: '🔌', description: '电缆截面、载流量、选型等计算工具', usageCount: 9876 },
-    6: { name: '照明计算', icon: '💡', description: '照度计算、灯具布置、节能分析工具', usageCount: 4567 }
-  }
+const toggleFavorite = (tool: any) => {
+  tool.isFavorite = !tool.isFavorite
+  ElMessage.success(tool.isFavorite ? '已添加到收藏' : '已从收藏中移除')
+}
 
-  const info = categories[categoryId.value as keyof typeof categories]
-  if (info) {
-    categoryInfo.value = {
-      id: categoryId.value,
-      ...info
-    }
-  }
+const clearSearch = () => {
+  searchKeyword.value = ''
+  sortBy.value = 'default'
+  currentPage.value = 1
+}
+
+const handleSizeChange = (val: number) => {
+  pageSize.value = val
+  currentPage.value = 1
+}
+
+const handleCurrentChange = (val: number) => {
+  currentPage.value = val
 }
 
 onMounted(() => {
-  updateCategoryInfo()
+  // 页面加载时可以从API获取工具数据
+  console.log(`加载分类 ${categoryId.value} 的工具`)
 })
 </script>
 
 <style scoped>
 .tool-list-view {
-  min-height: 100vh;
-  background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
-}
-
-.container {
   max-width: 1200px;
   margin: 0 auto;
-  padding: 0 2rem;
 }
 
-/* 面包屑导航 */
-.breadcrumb-section {
-  background: white;
-  padding: 1rem 0;
-  border-bottom: 1px solid #e9ecef;
-}
-
-.breadcrumb {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  font-size: 0.9rem;
-}
-
-.breadcrumb-item {
-  color: #667eea;
-  text-decoration: none;
-  transition: color 0.3s ease;
-}
-
-.breadcrumb-item:hover {
-  color: #5a67d8;
-}
-
-.breadcrumb-separator {
-  color: #adb5bd;
-}
-
-.breadcrumb-current {
-  color: #6c757d;
-  font-weight: 500;
-}
-
-/* 分类头部 */
-.category-header {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  color: white;
-  padding: 3rem 0;
+.page-header {
+  margin-bottom: 24px;
 }
 
 .header-content {
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  gap: 12px;
 }
 
-.category-info {
-  display: flex;
-  align-items: center;
-  gap: 2rem;
+.header-text h1 {
+  margin: 0;
+  font-size: 24px;
+  font-weight: 600;
 }
 
-.category-icon {
-  font-size: 4rem;
-  opacity: 0.9;
+.header-text p {
+  margin: 4px 0 0 0;
+  color: #666;
+  font-size: 14px;
 }
 
-.category-title {
-  font-size: 2.5rem;
-  font-weight: 700;
-  margin-bottom: 0.5rem;
-  text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
-}
-
-.category-description {
-  font-size: 1.2rem;
-  opacity: 0.9;
-  margin-bottom: 1rem;
-  line-height: 1.5;
-}
-
-.category-stats {
-  display: flex;
-  gap: 2rem;
-  font-size: 0.9rem;
-}
-
-.tool-count,
-.usage-count {
-  background: rgba(255, 255, 255, 0.2);
-  padding: 0.5rem 1rem;
-  border-radius: 20px;
-  font-weight: 500;
-}
-
-/* 筛选区域 */
-.filters-section {
+.filter-section {
+  margin-bottom: 24px;
+  padding: 16px;
   background: white;
-  padding: 1.5rem 0;
-  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
-}
-
-.filters-bar {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 2rem;
-}
-
-.search-box {
-  position: relative;
-  flex: 1;
-  max-width: 400px;
-}
-
-.search-input {
-  width: 100%;
-  padding: 0.75rem 1rem 0.75rem 3rem;
-  border: 2px solid #e9ecef;
-  border-radius: 25px;
-  font-size: 1rem;
-  outline: none;
-  transition: border-color 0.3s ease;
-}
-
-.search-input:focus {
-  border-color: #667eea;
-}
-
-.search-icon {
-  position: absolute;
-  left: 1rem;
-  top: 50%;
-  transform: translateY(-50%);
-  color: #adb5bd;
-  font-size: 1.1rem;
-}
-
-.filter-options {
-  display: flex;
-  align-items: center;
-  gap: 1rem;
-}
-
-.sort-select {
-  padding: 0.75rem 1rem;
-  border: 2px solid #e9ecef;
   border-radius: 8px;
-  background: white;
-  font-size: 0.9rem;
-  outline: none;
-  cursor: pointer;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
 }
 
-.view-toggle {
-  display: flex;
-  border: 2px solid #e9ecef;
-  border-radius: 8px;
-  overflow: hidden;
+.tools-grid {
+  margin-bottom: 24px;
 }
 
-.view-btn {
-  padding: 0.75rem 1rem;
-  border: none;
-  background: white;
-  cursor: pointer;
-  font-size: 1.1rem;
-  transition: all 0.3s ease;
-}
-
-.view-btn.active {
-  background: #667eea;
-  color: white;
-}
-
-/* 工具区域 */
-.tools-section {
-  padding: 2rem 0;
-}
-
-.tools-container.view-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
-  gap: 2rem;
-}
-
-.tools-container.view-list {
-  display: flex;
-  flex-direction: column;
-  gap: 1rem;
-}
-
-.tool-item {
-  cursor: pointer;
-  transition: transform 0.3s ease;
-}
-
-.tool-item:hover {
-  transform: translateY(-5px);
+.tool-col {
+  margin-bottom: 16px;
 }
 
 .tool-card {
-  background: white;
-  border-radius: 15px;
-  padding: 1.5rem;
-  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
-  transition: all 0.3s ease;
-  height: 100%;
-  display: flex;
-  flex-direction: column;
+  cursor: pointer;
+  transition: all 0.3s;
+  height: 280px;
+  border-radius: 12px;
+  position: relative;
+  overflow: hidden;
 }
 
 .tool-card:hover {
-  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15);
-}
-
-.view-list .tool-card {
-  flex-direction: row;
-  align-items: center;
-  gap: 2rem;
-  padding: 1rem 1.5rem;
+  transform: translateY(-4px);
+  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
 }
 
 .tool-header {
   display: flex;
   justify-content: space-between;
   align-items: flex-start;
-  margin-bottom: 1rem;
-}
-
-.view-list .tool-header {
-  margin-bottom: 0;
-  flex-direction: column;
-  align-items: center;
-  gap: 0.5rem;
+  margin-bottom: 12px;
 }
 
 .tool-icon {
-  font-size: 3rem;
-  color: #667eea;
-}
-
-.view-list .tool-icon {
-  font-size: 2rem;
-}
-
-.tool-meta {
+  font-size: 32px;
+  text-align: center;
+  width: 50px;
+  height: 50px;
   display: flex;
-  gap: 0.5rem;
+  align-items: center;
+  justify-content: center;
+  background: #f8f9fa;
+  border-radius: 8px;
 }
 
-.new-badge,
-.popular-badge {
-  padding: 0.25rem 0.5rem;
-  border-radius: 10px;
-  font-size: 0.7rem;
-  font-weight: 600;
+.new-tag, .popular-tag {
+  position: absolute;
+  top: 8px;
+  right: 8px;
 }
 
-.new-badge {
-  background: #28a745;
-  color: white;
-}
-
-.popular-badge {
-  background: #ff6b6b;
-  color: white;
-}
-
-.tool-content {
+.tool-info {
   flex: 1;
-  margin-bottom: 1rem;
-}
-
-.view-list .tool-content {
-  margin-bottom: 0;
+  margin-bottom: 12px;
 }
 
 .tool-name {
-  font-size: 1.3rem;
+  margin: 0 0 8px 0;
+  font-size: 16px;
   font-weight: 600;
-  color: #2c3e50;
-  margin-bottom: 0.5rem;
+  color: #303133;
+  line-height: 1.4;
 }
 
 .tool-description {
+  margin: 0 0 12px 0;
   color: #666;
-  line-height: 1.5;
-  margin-bottom: 1rem;
+  font-size: 13px;
+  line-height: 1.4;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
 }
 
 .tool-features {
   display: flex;
   flex-wrap: wrap;
-  gap: 0.5rem;
-}
-
-.feature-tag {
-  background: #f8f9fa;
-  color: #667eea;
-  padding: 0.25rem 0.75rem;
-  border-radius: 15px;
-  font-size: 0.8rem;
-  font-weight: 500;
-}
-
-.tool-footer {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-top: auto;
-}
-
-.view-list .tool-footer {
-  margin-top: 0;
-  flex-direction: column;
-  gap: 1rem;
+  gap: 4px;
+  margin-bottom: 12px;
 }
 
 .tool-stats {
   display: flex;
-  gap: 1rem;
-  font-size: 0.9rem;
-  color: #6c757d;
+  justify-content: space-between;
+  margin-bottom: 12px;
+  font-size: 12px;
+  color: #999;
 }
 
-.usage-stat,
-.rating-stat {
+.stat-item {
   display: flex;
   align-items: center;
-  gap: 0.25rem;
+  gap: 4px;
 }
 
-.stat-icon {
-  font-size: 0.8rem;
+.tool-actions {
+  display: flex;
+  gap: 8px;
 }
 
-.use-tool-btn {
-  background: #667eea;
-  color: white;
-  border: none;
-  padding: 0.5rem 1.5rem;
-  border-radius: 25px;
-  font-weight: 500;
-  cursor: pointer;
-  transition: all 0.3s ease;
+.tool-actions .el-button {
+  flex: 1;
 }
 
-.use-tool-btn:hover {
-  background: #5a67d8;
-  transform: translateX(3px);
+.pagination-container {
+  display: flex;
+  justify-content: center;
+  margin-top: 32px;
 }
 
-/* 空状态 */
-.empty-state {
+.backtop-content {
+  height: 100%;
+  width: 100%;
+  background-color: var(--el-bg-color-overlay);
+  box-shadow: var(--el-box-shadow-lighter);
   text-align: center;
-  padding: 4rem 2rem;
-  color: #6c757d;
-}
-
-.empty-icon {
-  font-size: 4rem;
-  margin-bottom: 1rem;
-  opacity: 0.5;
-}
-
-.empty-state h3 {
-  margin-bottom: 0.5rem;
-  color: #495057;
-}
-
-.back-btn {
-  display: inline-block;
-  margin-top: 1rem;
-  padding: 0.75rem 2rem;
-  background: #667eea;
-  color: white;
-  text-decoration: none;
-  border-radius: 25px;
-  transition: background 0.3s ease;
-}
-
-.back-btn:hover {
-  background: #5a67d8;
-}
-
-/* 推荐工具 */
-.recommended-section {
-  background: white;
-  padding: 3rem 0;
-  margin-top: 2rem;
-}
-
-.section-title {
-  text-align: center;
-  font-size: 2rem;
-  color: #2c3e50;
-  margin-bottom: 2rem;
-  font-weight: 600;
-}
-
-.recommended-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-  gap: 1.5rem;
-}
-
-.recommended-card {
+  border-radius: 4px;
+  color: var(--el-text-color-primary);
   display: flex;
   align-items: center;
-  gap: 1rem;
-  background: #f8f9fa;
-  padding: 1rem;
-  border-radius: 10px;
-  text-decoration: none;
-  color: inherit;
-  transition: all 0.3s ease;
-}
-
-.recommended-card:hover {
-  background: #667eea;
-  color: white;
-  transform: translateY(-3px);
-}
-
-.recommended-card .tool-icon {
-  font-size: 2rem;
-}
-
-.tool-info h4 {
-  margin-bottom: 0.25rem;
-  font-weight: 600;
-}
-
-.tool-info p {
-  font-size: 0.9rem;
-  opacity: 0.8;
+  justify-content: center;
 }
 
 /* 响应式设计 */
 @media (max-width: 768px) {
-  .container {
-    padding: 0 1rem;
+  .tool-list-view {
+    padding: 0 8px;
   }
 
-  .category-info {
+  .header-content {
     flex-direction: column;
-    text-align: center;
-    gap: 1rem;
+    align-items: flex-start;
+    gap: 8px;
   }
 
-  .category-icon {
-    font-size: 3rem;
+  .header-text h1 {
+    font-size: 20px;
   }
 
-  .category-title {
-    font-size: 2rem;
+  .filter-section {
+    padding: 12px;
   }
 
-  .category-stats {
+  .filter-section .el-col {
+    margin-bottom: 12px;
+  }
+
+  .tool-card {
+    height: auto;
+    min-height: 240px;
+  }
+
+  .tool-actions {
     flex-direction: column;
-    gap: 0.5rem;
   }
 
-  .filters-bar {
-    flex-direction: column;
-    gap: 1rem;
-  }
-
-  .filter-options {
+  .tool-actions .el-button {
     width: 100%;
-    justify-content: space-between;
-  }
-
-  .tools-container.view-grid {
-    grid-template-columns: 1fr;
-  }
-
-  .tools-container.view-list .tool-card {
-    flex-direction: column;
-    text-align: center;
-  }
-
-  .recommended-grid {
-    grid-template-columns: 1fr;
+    margin: 2px 0;
   }
 }
 </style>

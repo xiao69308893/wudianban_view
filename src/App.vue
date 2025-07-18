@@ -1,191 +1,235 @@
 <script setup lang="ts">
-import { RouterView } from 'vue-router'
-import { onMounted } from 'vue'
-import { useUserStore } from './stores/user'
+import { ref } from 'vue'
+import { useRouter } from 'vue-router'
+import { useUserStore } from '@/stores/user'
 
+const router = useRouter()
 const userStore = useUserStore()
 
-onMounted(() => {
-  userStore.checkAuth()
-})
+// 控制移动端菜单展开/收起
+const isMenuCollapsed = ref(false)
+
+// 导航菜单项
+const menuItems = [
+  { index: '/', title: '首页', icon: 'House' },
+  { index: '/categories', title: '计算工具', icon: 'Calculator' },
+  { index: '/about', title: '关于', icon: 'InfoFilled' }
+]
+
+// 处理菜单选择
+const handleMenuSelect = (key: string) => {
+  router.push(key)
+  // 移动端选择后收起菜单
+  if (window.innerWidth < 768) {
+    isMenuCollapsed.value = true
+  }
+}
+
+// 退出登录
+const handleLogout = () => {
+  userStore.logout()
+  router.push('/login')
+}
 </script>
 
 <template>
-  <div id="app">
-    <nav class="main-nav">
-      <div class="nav-container">
-        <RouterLink to="/" class="logo">
-          <span class="logo-icon">⚡</span>
-          <span class="logo-text">电气计算工具</span>
-        </RouterLink>
+  <!-- 响应式布局容器 -->
+  <el-container class="app-container">
+    <!-- 侧边栏 - 桌面端显示，移动端可折叠 -->
+    <el-aside
+      :width="isMenuCollapsed ? '64px' : '200px'"
+      class="app-sidebar"
+      :class="{ 'mobile-hidden': isMenuCollapsed }"
+    >
+      <!-- Logo区域 -->
+      <div class="logo-container">
+        <img alt="Logo" src="@/assets/logo.svg" width="32" height="32" />
+        <span v-show="!isMenuCollapsed" class="logo-text">电气计算</span>
+      </div>
 
-        <div class="nav-links">
-          <RouterLink to="/categories" class="nav-link">工具分类</RouterLink>
-          <RouterLink to="/about" class="nav-link">关于</RouterLink>
+      <!-- 导航菜单 -->
+      <el-menu
+        :default-active="$route.path"
+        :collapse="isMenuCollapsed"
+        @select="handleMenuSelect"
+        class="app-menu"
+      >
+        <el-menu-item
+          v-for="item in menuItems"
+          :key="item.index"
+          :index="item.index"
+        >
+          <el-icon><component :is="item.icon" /></el-icon>
+          <template #title>{{ item.title }}</template>
+        </el-menu-item>
+      </el-menu>
+    </el-aside>
 
-          <div class="user-section">
-            <template v-if="userStore.isAuthenticated">
-              <span class="user-name">{{ userStore.user?.username }}</span>
-              <button @click="userStore.logout()" class="logout-btn">退出</button>
-            </template>
-            <template v-else>
-              <RouterLink to="/login" class="login-btn">登录</RouterLink>
-            </template>
-          </div>
+    <!-- 主体区域 -->
+    <el-container>
+      <!-- 顶部导航栏 -->
+      <el-header class="app-header">
+        <div class="header-left">
+          <!-- 移动端菜单切换按钮 -->
+          <el-button
+            class="mobile-menu-btn"
+            :icon="isMenuCollapsed ? 'Expand' : 'Fold'"
+            @click="isMenuCollapsed = !isMenuCollapsed"
+            text
+          />
+
+          <!-- 面包屑导航 -->
+          <el-breadcrumb separator="/" class="breadcrumb">
+            <el-breadcrumb-item :to="{ path: '/' }">首页</el-breadcrumb-item>
+            <el-breadcrumb-item v-if="$route.name === 'category'">
+              {{ $route.params.categoryId }}
+            </el-breadcrumb-item>
+            <el-breadcrumb-item v-if="$route.name === 'tool'">
+              工具详情
+            </el-breadcrumb-item>
+          </el-breadcrumb>
         </div>
-      </div>
-    </nav>
 
-    <main class="main-content">
-      <RouterView />
-    </main>
+        <div class="header-right">
+          <!-- 用户信息 -->
+          <el-dropdown v-if="userStore.isAuthenticated" @command="handleLogout">
+            <span class="user-info">
+              {{ userStore.user?.username }}
+              <el-icon class="el-icon--right"><arrow-down /></el-icon>
+            </span>
+            <template #dropdown>
+              <el-dropdown-menu>
+                <el-dropdown-item command="logout">退出登录</el-dropdown-item>
+              </el-dropdown-menu>
+            </template>
+          </el-dropdown>
 
-    <footer class="main-footer">
-      <div class="footer-container">
-        <p>&copy; 2025 电气计算工具平台. 版权所有.</p>
-      </div>
-    </footer>
-  </div>
+          <!-- 未登录状态 -->
+          <el-button v-else @click="router.push('/login')" type="primary">
+            登录
+          </el-button>
+        </div>
+      </el-header>
+
+      <!-- 主要内容区域 -->
+      <el-main class="app-main">
+        <router-view />
+      </el-main>
+    </el-container>
+  </el-container>
 </template>
 
 <style scoped>
-#app {
-  min-height: 100vh;
-  display: flex;
-  flex-direction: column;
+.app-container {
+  height: 100vh;
 }
 
-/* 导航栏样式 */
-.main-nav {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
-  position: sticky;
-  top: 0;
-  z-index: 100;
+.app-sidebar {
+  background: #001529;
+  transition: width 0.3s;
+  overflow: hidden;
 }
 
-.nav-container {
-  max-width: 1200px;
-  margin: 0 auto;
-  padding: 0 2rem;
+.logo-container {
+  height: 60px;
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  height: 70px;
-}
-
-.logo {
-  display: flex;
-  align-items: center;
-  text-decoration: none;
+  padding: 0 16px;
   color: white;
-  font-size: 1.5rem;
-  font-weight: 600;
-}
-
-.logo-icon {
-  font-size: 2rem;
-  margin-right: 0.5rem;
+  border-bottom: 1px solid #1e3a8a;
 }
 
 .logo-text {
+  margin-left: 12px;
   font-weight: 600;
+  font-size: 16px;
 }
 
-.nav-links {
-  display: flex;
-  align-items: center;
-  gap: 2rem;
+.app-menu {
+  border-right: none;
+  background: #001529;
 }
 
-.nav-link {
+.app-menu :deep(.el-menu-item) {
+  color: rgba(255, 255, 255, 0.8);
+}
+
+.app-menu :deep(.el-menu-item:hover),
+.app-menu :deep(.el-menu-item.is-active) {
+  background: #1890ff;
   color: white;
-  text-decoration: none;
-  padding: 0.5rem 1rem;
-  border-radius: 25px;
-  transition: all 0.3s ease;
-  font-weight: 500;
 }
 
-.nav-link:hover,
-.nav-link.router-link-active {
-  background: rgba(255, 255, 255, 0.2);
-  transform: translateY(-2px);
-}
-
-.user-section {
-  display: flex;
-  align-items: center;
-  gap: 1rem;
-}
-
-.user-name {
-  color: white;
-  font-weight: 500;
-}
-
-.login-btn,
-.logout-btn {
-  background: rgba(255, 255, 255, 0.2);
-  color: white;
-  border: 2px solid white;
-  padding: 0.5rem 1.5rem;
-  border-radius: 25px;
-  text-decoration: none;
-  font-weight: 500;
-  cursor: pointer;
-  transition: all 0.3s ease;
-}
-
-.login-btn:hover,
-.logout-btn:hover {
+.app-header {
   background: white;
-  color: #667eea;
-  transform: translateY(-2px);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0 16px;
+  border-bottom: 1px solid #f0f0f0;
+  box-shadow: 0 1px 4px rgba(0, 21, 41, 0.08);
 }
 
-/* 主内容区域 */
-.main-content {
-  flex: 1;
-  background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
-  min-height: calc(100vh - 140px);
+.header-left {
+  display: flex;
+  align-items: center;
 }
 
-/* 页脚样式 */
-.main-footer {
-  background: #2c3e50;
-  color: white;
-  padding: 1rem 0;
-  text-align: center;
+.mobile-menu-btn {
+  margin-right: 16px;
 }
 
-.footer-container {
-  max-width: 1200px;
-  margin: 0 auto;
-  padding: 0 2rem;
+.breadcrumb {
+  display: none;
+}
+
+.user-info {
+  cursor: pointer;
+  color: #666;
+}
+
+.app-main {
+  background: #f5f5f5;
+  min-height: calc(100vh - 60px);
+  padding: 16px;
 }
 
 /* 响应式设计 */
-@media (max-width: 768px) {
-  .nav-container {
-    padding: 0 1rem;
-    flex-direction: column;
-    height: auto;
-    padding: 1rem;
+@media (min-width: 768px) {
+  .mobile-menu-btn {
+    display: none;
   }
 
-  .nav-links {
-    margin-top: 1rem;
-    gap: 1rem;
+  .breadcrumb {
+    display: block;
   }
 
-  .logo {
-    font-size: 1.2rem;
+  .app-sidebar {
+    position: relative;
+  }
+}
+
+@media (max-width: 767px) {
+  .app-sidebar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    height: 100vh;
+    z-index: 1000;
+    transform: translateX(0);
+    transition: transform 0.3s;
   }
 
-  .nav-link {
-    padding: 0.5rem;
-    font-size: 0.9rem;
+  .app-sidebar.mobile-hidden {
+    transform: translateX(-100%);
+  }
+
+  .app-main {
+    padding: 12px;
+  }
+
+  .logo-text {
+    display: none;
   }
 }
 </style>
