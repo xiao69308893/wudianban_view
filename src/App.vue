@@ -11,9 +11,6 @@ const isMenuCollapsed = ref(false)
 
 // 导航菜单项
 const menuItems = [
-  { index: '/', title: '首页', icon: 'House' },
-  { index: '/categories', title: '计算工具', icon: 'Calculator' },
-  { index: '/about', title: '关于', icon: 'InfoFilled' }
 ]
 
 // 处理菜单选择
@@ -36,19 +33,19 @@ const handleLogout = () => {
   <!-- 响应式布局容器 -->
   <el-container class="app-container">
     <!-- 侧边栏 - 桌面端显示，移动端可折叠 -->
-    <el-aside
+<!--    <el-aside
       :width="isMenuCollapsed ? '64px' : '200px'"
       class="app-sidebar"
       :class="{ 'mobile-hidden': isMenuCollapsed }"
     >
-      <!-- Logo区域 -->
+      &lt;!&ndash; Logo区域 &ndash;&gt;
       <div class="logo-container">
         <img alt="Logo" src="@/assets/logo.svg" width="32" height="32" />
         <span v-show="!isMenuCollapsed" class="logo-text">电气计算</span>
       </div>
 
-      <!-- 导航菜单 -->
-      <el-menu
+      &lt;!&ndash; 导航菜单 &ndash;&gt;
+&lt;!&ndash;      <el-menu
         :default-active="$route.path"
         :collapse="isMenuCollapsed"
         @select="handleMenuSelect"
@@ -62,8 +59,8 @@ const handleLogout = () => {
           <el-icon><component :is="item.icon" /></el-icon>
           <template #title>{{ item.title }}</template>
         </el-menu-item>
-      </el-menu>
-    </el-aside>
+      </el-menu>&ndash;&gt;
+    </el-aside>-->
 
     <!-- 主体区域 -->
     <el-container>
